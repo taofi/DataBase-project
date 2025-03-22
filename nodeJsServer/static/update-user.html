@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Обновление пользователя</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        form {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input[type="text"],
+        input[type="password"],
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            border-radius: 5px;
+        }
+        .back-button {
+            background-color: #007BFF;
+            margin-top: 20px;
+            width: auto;
+            display: block;
+            text-align: center;
+        }
+        .back-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+<h1>Обновление пользователя</h1>
+<form onsubmit="updateUser(event)">
+
+    <label for="newLogin">Новый логин:</label>
+    <input type="text" id="newLogin"><br>
+
+    <label for="newPass">Новый пароль:</label>
+    <input type="password" id="newPass"><br>
+
+    <label for="newUserName">Новое имя:</label>
+    <input type="text" id="newUserName"><br>
+
+    <label for="newLastName">Новая фамилия:</label>
+    <input type="text" id="newLastName"><br>
+
+    <label for="newPhoneNumber">Новый номер телефона:</label>
+    <input type="text" id="newPhoneNumber"><br>
+
+    <label for="newPasport">Новый паспорт:</label>
+    <input type="text" id="newPasport"><br>
+
+    <button type="submit">Обновить пользователя</button>
+</form>
+
+<h2>Результат:</h2>
+<p id="result"></p>
+
+<button class="back-button" onclick="window.history.back()">Назад</button>
+
+<script>
+    async function updateUser(event) {
+        event.preventDefault(); // Отменяем стандартное поведение формы
+
+        const targetId = null;
+        const newLogin = document.getElementById('newLogin').value;
+        const newPass = document.getElementById('newPass').value;
+        const newUserName = document.getElementById('newUserName').value;
+        const newLastName = document.getElementById('newLastName').value;
+        const newPhoneNumber = document.getElementById('newPhoneNumber').value;
+        const newPasport = document.getElementById('newPasport').value;
+
+        try {
+            const response = await fetch('/update-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    targetId: targetId,
+                    newLogin: newLogin,
+                    newPass: newPass,
+                    newUserName: newUserName,
+                    newLastName: newLastName,
+                    newPhoneNumber: newPhoneNumber,
+                    newPasport: newPasport
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Ошибка при выполнении запроса: ' + response.statusText);
+            }
+
+            const data = await response.json();
+            document.getElementById('result').textContent = data.message || 'Неизвестная ошибка';
+        } catch (error) {
+            document.getElementById('result').textContent = 'Ошибка: ' + error.message;
+        }
+    }
+</script>
+</body>
+</html>

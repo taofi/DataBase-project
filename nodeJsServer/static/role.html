@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Role Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        h2 {
+            color: #555;
+        }
+
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+            display: none;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            text-align: left;
+            padding: 8px;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        #error {
+            color: red;
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<h1>Roles</h1>
+<div style="display: flex">
+    <div style="width: 400px; margin: 10px">
+        <h2>Добавить Роль</h2>
+        <input type="text" id="addRoleName" placeholder="Название роли" required>
+        <input type="number" id="addRoleLevel" placeholder="Уровень роли" required>
+        <button onclick="handleAddRole()">Добавить Роль</button>
+    </div>
+
+    <div style="width: 400px; margin: 10px">
+        <h2>Обновить Роль</h2>
+        <input type="number" id="updateRoleId" placeholder="ID роли" required>
+        <input type="text" id="updateRoleName" placeholder="Новое название роли">
+        <input type="number" id="updateRoleLevel" placeholder="Новый уровень роли">
+        <button onclick="handleUpdateRole()">Обновить Роль</button>
+
+    </div>
+    <div style="width: 400px; margin: 10px">
+        <h2>Удалить Роль</h2>
+        <input type="number" id="deleteRoleId" placeholder="ID роли" required>
+        <button onclick="handleDeleteRole()">Удалить Роль</button>
+    </div>
+    <h1>Установить Роль пользователю</h1>
+    <form id="setRoleForm" onsubmit="event.preventDefault(); setRole();">
+        <label for="targetUserId">ID Целевого Пользователя:</label>
+        <input type="number" id="targetUserId" placeholder="Введите ID целевого пользователя" required>
+
+        <label for="roleId">ID Роли:</label>
+        <input type="number" id="roleId" placeholder="Введите ID роли" required>
+
+        <button type="submit">Установить Роль</button>
+    </form>
+
+    <div class="message" id="message"></div>
+</div>
+
+<button style="width: 300px; align-self: center" id="fetchRoles">Get Roles</button>
+<div id="error"></div>
+<table id="rolesTable">
+    <thead>
+    <tr>
+        <th>Role ID</th>
+        <th>Name</th>
+        <th>Role Level</th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script>
+    async function setRole() {
+        const targetUserId = document.getElementById("targetUserId").value;
+        const roleId = document.getElementById("roleId").value;
+
+        try {
+            const response = await fetch('/setRole', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    target_user_id: Number(targetUserId),
+                    role_id: Number(roleId)
+                })
+            });
+
+            const data = await response.json();
+
+            // Проверка на успешный ответ
+            if (!response.ok) {
+                document.getElementById("message").innerHTML = `<span class="error">Ошибка: ${data.error || "Неизвестная ошибка"}</span>`;
+            } else {
+                document.getElementById("message").innerText = `Роль установлена: ${data.message}`;
+                // Очистка полей после успешной отправки
+                document.getElementById("setRoleForm").reset();
+            }
+        } catch (error) {
+            document.getElementById("message").innerHTML = `<span class="error">Ошибка: ${error.message}</span>`;
+        }
+    }
+    document.getElementById('fetchRoles').addEventListener('click', async () => {
+        const errorDiv = document.getElementById('error');
+        const table = document.getElementById('rolesTable');
+        const tableBody = table.querySelector('tbody');
+
+        // Очистка предыдущих данных
+        errorDiv.textContent = '';
+        tableBody.innerHTML = '';
+        table.style.display = 'none';
+
+        try {
+            const response = await fetch('/getRole', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include' // Для отправки cookie с сессией
+            });
+
+            const result = await response.json();
+            console.log(result);
+            if (!response.ok || !Array.isArray(result.roles)) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Ошибка получения данных');
+            }
+
+            // Отображение данных в таблице
+            result.roles.forEach(role => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${role[0] ?? 'N/A'}</td> <!-- Role ID -->
+                    <td>${role[1] ?? 'N/A'}</td> <!-- Name -->
+                    <td>${role[2] ?? 'N/A'}</td> <!-- Role Level -->
+                `;
+                tableBody.appendChild(row);
+            });
+
+            table.style.display = 'table';
+
+        } catch (err) {
+            // Вывод ошибки в alert
+            alert(`Ошибка: ${err.message}`);
+            errorDiv.textContent = `Ошибка: ${err.message}`;
+        }
+    });
+
+    async function sendRequest(url, method, data) {
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                alert(errorData.error || 'Ошибка запроса');
+                return;
+            }
+
+            const result = await response.json();
+            console.log(data);
+            alert(result.message || 'Запрос выполнен успешно');
+        } catch (error) {
+            alert('Ошибка сети: ' + error.message);
+        }
+    }
+
+    function handleAddRole() {
+        const name = document.getElementById('addRoleName').value;
+        const roleLevel = document.getElementById('addRoleLevel').value;
+        const data = { name, role_level: Number(roleLevel) };
+        sendRequest('/addRole', 'POST', data);
+    }
+
+    function handleUpdateRole() {
+        const roleId = document.getElementById('updateRoleId').value;
+        const newName = document.getElementById('updateRoleName').value;
+        const newRoleLevel = document.getElementById('updateRoleLevel').value;
+        const data = { roleId: Number(roleId), newName, newRoleLevel: Number(newRoleLevel) || null };
+        sendRequest('/updateRole', 'POST', data);
+    }
+
+    function handleDeleteRole() {
+        const roleId = document.getElementById('deleteRoleId').value;
+        const data = { roleId: Number(roleId) };
+        sendRequest('/deleteRole', 'POST', data);
+    }
+
+
+    document.getElementById('getUsersForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const userRole = document.getElementById('userRole').value;
+        const segment = document.getElementById('segment').value;
+
+        try {
+            const response = await fetch('/getUsers', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ user_role: userRole, segment: segment })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Неизвестная ошибка');
+            }
+
+            // Отображение пользователей в таблице
+            const userList = document.getElementById('userList');
+            userList.innerHTML = `
+                    <h2>Список пользователей:</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Роль</th>
+                                <th>Логин</th>
+                                <th>Имя</th>
+                                <th>Фамилия</th>
+                                <th>Телефон</th>
+                                <th>Паспорт</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.users.map(user => `
+                                <tr>
+                                    <td>${user.user_id}</td>
+                                    <td>${user.user_role}</td>
+                                    <td>${user.login}</td>
+                                    <td>${user.user_name}</td>
+                                    <td>${user.last_name}</td>
+                                    <td>${user.phone_number}</td>
+                                    <td>${user.passport}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+        } catch (error) {
+            console.error('Ошибка:', error.message);
+            document.getElementById('userList').innerHTML = `<span class="error">Ошибка: ${error.message}</span>`;
+        }
+    });
+</script>
+</body>
+</html>

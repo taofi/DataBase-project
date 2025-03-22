@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Информация о пользователе и Счета</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        form {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="number"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .error {
+            color: red;
+            margin-top: 20px;
+        }
+        .success {
+            color: green;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <button onclick="window.location.href='/queue'">Очередь</button>
+    <button onclick="window.location.href='/history'">История операций</button>
+    <button onclick="window.location.href='/role'">Роли</button>
+    <button onclick="window.location.href='/history'">Валюты</button>
+
+</header>
+<h1>Информация о пользователе</h1>
+<form id="fetchUserInfoForm">
+    <label for="targetUserId">ID пользователя:</label>
+    <input type="number" id="targetUserId" name="targetUserId" placeholder="Введите ID пользователя (по умолчанию ваш)">
+    <button type="submit">Получить информацию о пользователе</button>
+</form>
+
+<div id="userInfoMessage" class="success"></div>
+<table id="userInfoTable" style="display: none;">
+    <thead>
+    <tr>
+        <th>Логин</th>
+        <th>Имя</th>
+        <th>Фамилия</th>
+        <th>Телефон</th>
+        <th>Паспорт</th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<div id="successMessage" class="success"></div>
+
+<!-- Форма для обновления баланса -->
+<h2>Обновить баланс счета</h2>
+<form id="updateBalanceForm">
+    <label for="cashId">ID счета:</label>
+    <input type="number" id="cashId" name="cashId" placeholder="Введите ID счета" required>
+    <label for="amount">Сумма:</label>
+    <input type="number" id="amount" name="amount" placeholder="Введите сумму" required>
+    <button type="submit">Обновить баланс</button>
+</form>
+
+<!-- Форма для перевода между счетами -->
+<h2>Перевод средств</h2>
+<form id="transferForm">
+    <label for="senderCashId">ID отправляющего счета:</label>
+    <input type="number" id="senderCashId" name="senderCashId" placeholder="Введите ID счета отправителя" required>
+    <label for="receiverCashId">ID получающего счета:</label>
+    <input type="number" id="receiverCashId" name="receiverCashId" placeholder="Введите ID счета получателя" required>
+    <label for="transferAmount">Сумма:</label>
+    <input type="number" id="transferAmount" name="amount" placeholder="Введите сумму для перевода" required>
+    <button type="submit">Перевести</button>
+</form>
+<div>
+    <h1>Управление Счетами</h1>
+
+    <div>
+        <label for="cashId3">ID Счета:</label>
+        <input type="text" id="cashId3" placeholder="Введите ID счета" required>
+    </div>
+
+    <button id="blockButton">Заблокировать Счет</button>
+    <button id="unblockButton">Разблокировать Счет</button>
+
+    <div class="message" id="message"></div>
+
+</div>
+<div>
+    <h1>Обновить cчет</h1>
+    <form onsubmit="updateCashAccount(event)">
+        <label for="cash_id">ID счета:</label>
+        <input type="text" id="cash_id" name="cash_id" required>
+
+        <label for="new_cash_name">Новое название счета:</label>
+        <input type="text" id="new_cash_name" name="new_cash_name" >
+
+        <label for="new_currency_id">Выберите новую валюту:</label>
+        <select id="new_currency_id" name="new_currency_id" >
+            <option value="">--Выберите валюту--</option>
+            <!-- Динамически заполняем валюты здесь -->
+        </select>
+
+        <input type="submit" value="Обновить счет">
+    </form>
+    <h1>Доступные Валюты</h1>
+    <table id="currenciesTable" style="display: none;">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Название</th>
+            <th>Курс</th>
+        </tr>
+        </thead>
+        <tbody id="currenciesTableBody">
+        </tbody>
+    </table>
+</div>
+<div>
+    <h1>Список счетов</h1>
+    <form id="cashAccountsForm">
+
+        <label for="ownerId">ID владельца:</label>
+        <input type="number" id="ownerId" name="ownerId" placeholder="Введите ID владельца"><br><br>
+
+        <button type="submit">Получить счета</button>
+    </form>
+
+    <div id="error"></div>
+    <table id="cashAccountsTable" style="display: none;">
+        <thead>
+        <tr>
+            <th>ID счета</th>
+            <th>Владелец</th>
+            <th>Баланс</th>
+            <th>Название счета</th>
+            <th>Заблокирован</th>
+            <th>Дата создания</th>
+            <th>ID валюты</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script>
+    document.getElementById('fetchUserInfoForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const targetUserId = document.getElementById('targetUserId').value || undefined;
+        const userInfoMessageDiv = document.getElementById('userInfoMessage');
+        const userInfoTable = document.getElementById('userInfoTable');
+        const userInfoTbody = userInfoTable.querySelector('tbody');
+
+        // Сбрасываем состояние
+        userInfoMessageDiv.textContent = '';
+        userInfoTbody.innerHTML = '';
+        userInfoTable.style.display = 'none';
+
+        try {
+            // Отправляем запрос на сервер
+            const response = await fetch('/userinfo', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ targetUserId }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Неизвестная ошибка');
+            }
+
+            // Проверяем, есть ли информация о пользователе
+            if (!data.userInfo) {
+                throw new Error('Пользователь не найден.');
+            }
+
+            // Заполняем таблицу данными
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                    <td>${data.userInfo.login}</td>
+                    <td>${data.userInfo.userName}</td>
+                    <td>${data.userInfo.lastName}</td>
+                    <td>${data.userInfo.phoneNumber}</td>
+                    <td>${data.userInfo.pasport}</td>
+                `;
+            userInfoTbody.appendChild(row);
+            userInfoTable.style.display = 'table';
+        } catch (error) {
+            userInfoMessageDiv.textContent = error.message;
+        }
+    });
+
+    document.getElementById('cashAccountsForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        // Скрыть таблицу и очистить сообщения об ошибках
+        const table = document.getElementById('cashAccountsTable');
+        const errorDiv = document.getElementById('error');
+        const tbody = table.querySelector('tbody');
+        tbody.innerHTML = '';
+        errorDiv.textContent = '';
+        table.style.display = 'none';
+
+        // Получить значения из формы
+        const ownerId = document.getElementById('ownerId').value || null;
+
+        try {
+            // Отправка запроса
+            const response = await fetch('/cash-accounts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ ownerId })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Ошибка сервера');
+            }
+
+            // Заполнение таблицы данными
+            data.cashAccounts.forEach(account => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                        <td>${account.cashId}</td>
+                        <td>${account.owner}</td>
+                        <td>${account.balance}</td>
+                        <td>${account.cashName}</td>
+                        <td>${account.isBlocked ? 'Да' : 'Нет'}</td>
+                        <td>${account.creationDate}</td>
+                        <td>${account.currencyId}</td>
+                    `;
+                tbody.appendChild(row);
+            });
+
+            // Отобразить таблицу
+            table.style.display = '';
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+
+    document.getElementById('updateBalanceForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const cashId = document.getElementById('cashId').value;
+        const amount = document.getElementById('amount').value;
+        const successMessageDiv = document.getElementById('successMessage');
+
+        // Сбрасываем состояние
+        successMessageDiv.textContent = '';
+
+        try {
+            // Отправляем запрос на обновление баланса
+            const response = await fetch('/UpdateAccountBalance', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ cashId, amount }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Неизвестная ошибка');
+            }
+
+            // Отображаем сообщение об успехе
+            alert( data.message || 'Баланс успешно обновлен.');
+        } catch (error) {
+            alert(message);
+        }
+    });
+
+    document.getElementById('transferForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const senderCashId = document.getElementById('senderCashId').value;
+        const receiverCashId = document.getElementById('receiverCashId').value;
+        const transferAmount = document.getElementById('transferAmount').value;
+        const successMessageDiv = document.getElementById('successMessage');
+        // Сбрасываем состояние
+        successMessageDiv.textContent = '';
+        console.log(JSON.stringify({ senderCashId, receiverCashId, transferAmount }));
+
+        try {
+            // Отправляем запрос на перевод средств
+            const response = await fetch('/transfer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ senderCashId, receiverCashId, transferAmount }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Неизвестная ошибка');
+            }
+
+            // Отображаем сообщение об успехе
+            alert(data.message || 'Перевод средств выполнен успешно.');
+        } catch (error) {
+            alert( error.message);
+        }
+    });
+
+    fetchCurrencies();
+
+    async function updateCashAccount(event) {
+        event.preventDefault(); // Предотвращаем отправку формы
+        console.log('Отправка запроса на обновление счета...');
+        const cashId = document.getElementById('cash_id').value;
+        const newCashName = document.getElementById('new_cash_name').value;
+        const newCurrencyId = document.getElementById('new_currency_id').value; // Получаем выбранную валюту
+
+        try {
+            const response = await fetch('/update-cash-account', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    cashId: cashId,
+                    newCashName: newCashName,
+                    newCurrencyId: newCurrencyId // Передаем новый ID валюты
+                }),
+            });
+
+            const result = await response.json(); // Получаем ответ от сервера
+            alert(result.message); // Выводим сообщение пользователю
+            console.log(result);
+
+        } catch (error) {
+            console.error('Ошибка при отправке запроса:', error);
+            alert('Ошибка при обновлении кассового счета.');
+        }
+    }
+
+    async function fetchCurrencies() {
+        console.log('Отправка запроса на получение валют...');
+        try {
+            const response = await fetch('/getCurrencies', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            const data = await response.json(); // Получаем JSON-ответ
+            const tableBody = document.getElementById('currenciesTableBody');
+            tableBody.innerHTML = ''; // Очищаем таблицу перед заполнением
+
+            // Очищаем и заполняем выпадающий список валют
+            const currencySelect = document.getElementById('new_currency_id');
+            currencySelect.innerHTML = '<option value="">--Выберите валюту--</option>'; // Сбрасываем список
+
+            data.currencies.forEach(currency => {
+                const [code, name, rate] = currency; // Деструктурируем массив
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${code}</td>
+                    <td>${name}</td>
+                    <td>${rate}</td>
+                `;
+                tableBody.appendChild(row);
+
+                // Добавляем валюту в выпадающий список
+                const option = document.createElement('option');
+                option.value = code; // Устанавливаем значение ID валюты
+                option.textContent = name; // Устанавливаем название валюты
+                currencySelect.appendChild(option);
+            });
+            console.log(data);
+            document.getElementById('currenciesTable').style.display = 'table'; // Показываем таблицу
+        } catch (error) {
+            console.error('Ошибка при получении валют:', error);
+            alert('Ошибка при получении данных о валютах.');
+        }
+    }
+
+    document.getElementById('blockButton').addEventListener('click', async () => {
+        const cashId = document.getElementById('cashId3').value;
+        const messageDiv = document.getElementById('message');
+
+        try {
+            const response = await fetch('/block-cash-account', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ cashId }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Ошибка при блокировке счета.');
+            }
+
+            messageDiv.innerHTML = `<span class="success">${data.message}</span>`;
+        } catch (error) {
+            messageDiv.innerHTML = `<span class="error">${error.message}</span>`;
+        }
+    });
+
+    document.getElementById('unblockButton').addEventListener('click', async () => {
+        const cashId = document.getElementById('cashId3').value;
+        const messageDiv = document.getElementById('message');
+
+        try {
+            const response = await fetch('/unblockAccount', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ cashId }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Ошибка при разблокировке счета.');
+            }
+
+            messageDiv.innerHTML = `<span class="success">${data.message}</span>`;
+        } catch (error) {
+            messageDiv.innerHTML = `<span class="error">${error.message}</span>`;
+        }
+    });
+</script>
+</body>
+</html>

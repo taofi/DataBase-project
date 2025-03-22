@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Info Request</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .output {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        pre {
+            margin: 0;
+            white-space: pre-wrap; /* Позволяет переносить длинные строки */
+            word-wrap: break-word; /* Переносит длинные слова */
+        }
+    </style>
+</head>
+<body>
+<h2>Профиль</h2>
+
+<div style="text-align: center;">
+    <button id="fetchUserInfo">Обновить информацию</button>
+    <button onclick="window.location.href='/update-user'">Изменить профиль</button>
+    <button onclick="window.location.href='/'">Домой</button>
+    <button id="deleteUser">Удалить профиль</button> <!-- Кнопка для удаления пользователя -->
+</div>
+
+<div id="output" class="output">
+    <strong>Результат:</strong>
+    <pre id="response">Нажмите кнопку, чтобы получить данные.</pre>
+</div>
+
+<script>
+    document.getElementById('fetchUserInfo').addEventListener('click', async () => {
+        const output = document.getElementById('response');
+
+        try {
+            const response = await fetch('/userinfo', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({}) // Пустое тело запроса
+            });
+
+            if (!response.ok) {
+                throw new Error(`Ошибка: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            if (data.userInfo) {
+                const userInfo = data.userInfo;
+                const formattedData = `Логин: ${userInfo.login}\nИмя: ${userInfo.userName}\nФамилия: ${userInfo.lastName}\nТелефон: ${userInfo.phoneNumber}\nПаспорт: ${userInfo.pasport}`;
+                output.textContent = formattedData;
+            } else if (data.error) {
+                output.textContent = `Ошибка: ${data.error}`;
+            } else {
+                output.textContent = 'Информация о пользователе не найдена.';
+            }
+        } catch (error) {
+            output.textContent = `Ошибка запроса: ${error.message}`;
+        }
+    });
+
+    document.getElementById('deleteUser').addEventListener('click', async () => {
+        const confirmDelete = confirm('Вы уверены, что хотите удалить свой профиль? Это действие нельзя будет отменить.');
+
+        if (confirmDelete) {
+            const userId = null; // target_user_id всегда равен null
+
+            try {
+                const response = await fetch('/deleteUser', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ target_user_id: userId }) // Передаем null для target_user_id
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Ошибка: ${response.status} ${response.statusText}`);
+                }
+
+                const result = await response.text(); // Получаем текст ответа
+
+                alert(result); // Показываем результат в alert
+
+                // Если удаление прошло успешно, перенаправляем на главную страницу
+                if (result.includes('Успех')) {
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                alert(`Ошибка запроса: ${error.message}`);
+            }
+        }
+    });
+</script>
+</body>
+</html>

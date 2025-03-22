@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Банк</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        header {
+            background-color: #007BFF;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        header span {
+            margin-right: 15px;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        #userInfo {
+            margin: 20px 0;
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .delete-button {
+            background-color: #dc3545;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        .delete-button:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <span id="UserName">Имя</span>
+    <span id="UserLastName">Фамилия</span>
+    <button onclick="window.location.href='/profile'">Профиль</button>
+    <button onclick="window.location.href='/createCash'">Создать счет</button>
+    <button onclick="window.location.href='/update-cash-account'">изменить счет</button>
+    <button onclick="window.location.href='/transfer'">Перевод</button>
+    <button onclick="window.location.href='/history'">История</button>
+    <button onclick="window.location.href='/logout'">Выйти</button>
+</header>
+<h2>Добро пожаловать</h2>
+<div id="userInfo"></div>
+<div>
+    <button onclick="fetchCashAccounts()">Обновить</button>
+    <table id="cashTable">
+        <thead>
+        <tr>
+            <th>Cash ID</th>
+            <th>Баланс</th>
+            <th>Имя счета</th>
+            <th>Заблокирован</th>
+            <th>Дата создания</th>
+            <th>Валюта</th>
+            <th>Действия</th>
+        </tr>
+        </thead>
+        <tbody id="cashContainer">
+        <!-- Данные счетов будут добавлены сюда -->
+        </tbody>
+    </table>
+</div>
+</body>
+<script>
+    const userName = document.getElementById('UserName');
+    const userLastName = document.getElementById('UserLastName');
+
+    async function getInfo() {
+        try {
+            const response = await fetch('/userinfo', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Ошибка при получении данных');
+            }
+
+            const data = await response.json();
+            const userInfoDiv = document.getElementById('userInfo');
+            userInfoDiv.innerHTML = ''; // Очищаем предыдущую информацию
+
+            if (data.userInfo) {
+                userName.innerText = data.userInfo.userName;
+                userLastName.innerText = data.userInfo.lastName;
+            } else {
+                userInfoDiv.innerHTML = '<p>Пользователь не найден.</p>';
+            }
+        } catch (error) {
+            console.error('Ошибка:', error);
+            document.getElementById('userInfo').innerHTML = `<p>Ошибка при получении информации. ${error.message}</p>`;
+        }
+    }
+    getInfo();
+
+    async function fetchCashAccounts(targetUserId = null) {
+        try {
+            const response = await fetch('/cash-accounts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ targetUserId }),
+            });
+
+            // Проверка успешности ответа
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error('Ошибка: ' + (errorData.error || response.statusText));
+            }
+
+            const data = await response.json();
+            const cashContainer = document.getElementById('cashContainer');
+            cashContainer.innerHTML = ''; // Очищаем таблицу перед добавлением новых элементов
+
+            // Проверка наличия счетов
+            if (!data.cashAccounts || data.cashAccounts.length === 0) {
+                cashContainer.innerHTML = '<tr><td colspan="7">Нет доступных счетов</td></tr>';
+                return;
+            }
+            console.log(data);
+            // Добавление счетов в таблицу
+            data.cashAccounts.forEach((account) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${account.cashId}</td>
+                    <td>${account.balance}</td>
+                    <td>${account.cashName}</td>
+                    <td>${account.isBlocked ? 'Да' : 'Нет'}</td>
+                    <td>${new Date(account.creationDate).toLocaleDateString()}</td>
+                    <td>${account.currencyId}</td>
+                    <td><button class="delete-button" onclick="deleteCashAccount(${account.cashId})">Удалить</button></td>
+                `;
+                cashContainer.appendChild(row);
+            });
+        } catch (error) {
+            console.error('Ошибка при получении данных о счетах:', error);
+            const cashContainer = document.getElementById('cashContainer');
+            cashContainer.innerHTML = '<tr><td colspan="7">Ошибка при получении данных: ' + error.message + '</td></tr>';
+        }
+    }
+
+    async function deleteCashAccount(cashId) {
+        if (confirm(`Вы уверены, что хотите удалить счет ID: ${cashId}?`)) {
+            try {
+                const response = await fetch('/deleteCashAccount', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ cash_id: cashId }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error('Ошибка: ' + (errorData.error || response.statusText));
+                }
+
+                const result = await response.json();
+                alert(result.message); // Отображаем сообщение от сервера
+                fetchCashAccounts(); // Обновляем список счетов после удаления
+            } catch (error) {
+                console.error('Ошибка при удалении счета:', error);
+                alert('Ошибка при удалении счета: ' + error.message);
+            }
+        }
+    }
+</script>
+</html>

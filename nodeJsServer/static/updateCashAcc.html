@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Обновить Кассовый Счет</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        form {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 30px;
+        }
+
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="number"],
+        input[type="text"],
+        select {
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        input[type="submit"] {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 16px;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+
+        table {
+            width: 80%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        table th {
+            background-color: #007BFF;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+<h1>Обновить cчет</h1>
+<form onsubmit="updateCashAccount(event)">
+    <label for="cash_id">ID счета:</label>
+    <input type="text" id="cash_id" name="cash_id" required>
+
+    <label for="new_cash_name">Новое название счета:</label>
+    <input type="text" id="new_cash_name" name="new_cash_name" >
+
+    <label for="new_currency_id">Выберите новую валюту:</label>
+    <select id="new_currency_id" name="new_currency_id" >
+        <option value="">--Выберите валюту--</option>
+        <!-- Динамически заполняем валюты здесь -->
+    </select>
+
+    <input type="submit" value="Обновить счет">
+</form>
+<div>
+    <h1>Блокировка cчета</h1>
+    <form id="blockForm">
+        <label for="cashId2">Введите ID счета:</label>
+        <input type="text" id="cashId2" name="cashId" required placeholder="ID счета">
+        <input type="submit" value="Заблокировать счет">
+    </form>
+</div>
+<h1>Доступные Валюты</h1>
+<table id="currenciesTable" style="display: none;">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Название</th>
+        <th>Курс</th>
+    </tr>
+    </thead>
+    <tbody id="currenciesTableBody">
+    </tbody>
+</table>
+
+<script>
+    fetchCurrencies();
+
+    async function updateCashAccount(event) {
+        event.preventDefault(); // Предотвращаем отправку формы
+        console.log('Отправка запроса на обновление счета...');
+        const cashId = document.getElementById('cash_id').value;
+        const newCashName = document.getElementById('new_cash_name').value;
+        const newCurrencyId = document.getElementById('new_currency_id').value; // Получаем выбранную валюту
+
+        try {
+            const response = await fetch('/update-cash-account', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    cashId: cashId,
+                    newCashName: newCashName,
+                    newCurrencyId: newCurrencyId // Передаем новый ID валюты
+                }),
+            });
+
+            const result = await response.json(); // Получаем ответ от сервера
+            alert(result.message); // Выводим сообщение пользователю
+            console.log(result);
+
+            window.location.href = '/'; // Перенаправляем на главную страницу
+        } catch (error) {
+            console.error('Ошибка при отправке запроса:', error);
+            alert('Ошибка при обновлении кассового счета.');
+        }
+    }
+
+    async function fetchCurrencies() {
+        console.log('Отправка запроса на получение валют...');
+        try {
+            const response = await fetch('/getCurrencies', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            const data = await response.json(); // Получаем JSON-ответ
+            const tableBody = document.getElementById('currenciesTableBody');
+            tableBody.innerHTML = ''; // Очищаем таблицу перед заполнением
+
+            // Очищаем и заполняем выпадающий список валют
+            const currencySelect = document.getElementById('new_currency_id');
+            currencySelect.innerHTML = '<option value="">--Выберите валюту--</option>'; // Сбрасываем список
+
+            data.currencies.forEach(currency => {
+                const [code, name, rate] = currency; // Деструктурируем массив
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${code}</td>
+                    <td>${name}</td>
+                    <td>${rate}</td>
+                `;
+                tableBody.appendChild(row);
+
+                // Добавляем валюту в выпадающий список
+                const option = document.createElement('option');
+                option.value = code; // Устанавливаем значение ID валюты
+                option.textContent = name; // Устанавливаем название валюты
+                currencySelect.appendChild(option);
+            });
+            console.log(data);
+            document.getElementById('currenciesTable').style.display = 'table'; // Показываем таблицу
+        } catch (error) {
+            console.error('Ошибка при получении валют:', error);
+            alert('Ошибка при получении данных о валютах.');
+        }
+    }
+    document.getElementById('blockForm').addEventListener('submit', async function(event) {
+        event.preventDefault(); // Предотвращаем перезагрузку страницы
+
+        const cashId = document.getElementById('cashId2').value;
+
+        // Подтверждение действия
+        const confirmation = confirm(`Вы хотите заблокировать счет с ID: ${cashId}?`);
+        if (!confirmation) {
+            alert('Операция отменена.');
+            return; // Если пользователь нажал "Отмена", запрос не отправляется
+        }
+
+        try {
+            const response = await fetch('/block-cash-account', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ cashId }),
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                alert(`Результат: ${result.message}`);
+            } else {
+                alert(`Ошибка: ${result.error || 'Не удалось заблокировать счет.'}`);
+            }
+        } catch (error) {
+            console.error('Ошибка при отправке запроса:', error);
+            alert('Произошла ошибка при блокировке счета.');
+        }
+    });
+</script>
+</body>
+</html>

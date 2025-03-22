@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get History</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        form {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        input[type="checkbox"] {
+            margin-bottom: 15px;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        h2 {
+            text-align: center;
+            margin-top: 20px;
+            color: #333;
+        }
+        #historyContainer {
+            margin-top: 20px;
+            overflow-x: auto; /* Добавляем прокрутку по горизонтали, если необходимо */
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+    </style>
+    <script>
+
+
+        async function fetchHistory() {
+            const allUsers = false;
+            const filterId = null;
+
+            try {
+                const body = {
+                    all_users: allUsers,
+                };
+
+                if (allUsers && filterId) {
+                    body.filter_id = Number(filterId);
+                }
+
+                const response = await fetch('/getHistory', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    alert(`Ошибка: ${data.error || "Неизвестная ошибка"}`);
+                } else if (data.result) {
+                    alert(`Результат: ${data.result}`);
+                } else if (data.history) {
+                    console.log('Полученные данные:', data.history); // Выводим данные в консоль
+
+                    // Выводим историю в таблицу
+                    const historyContainer = document.getElementById("historyContainer");
+                    historyContainer.innerHTML = ""; // Очищаем контейнер
+
+                    // Создаем таблицу
+                    const table = document.createElement("table");
+                    table.border = "1";
+                    table.style.width = "100%";
+                    table.style.borderCollapse = "collapse";
+
+                    // Заголовок таблицы
+                    const headerRow = document.createElement("tr");
+                    const headers = ["Operation_id", "Transactor", "cash_from", "cash_to", "operation", "amount", "operation_description"];
+                    headers.forEach(header => {
+                        const th = document.createElement("th");
+                        th.textContent = header; // Устанавливаем заголовок
+                        headerRow.appendChild(th);
+                    });
+                    table.appendChild(headerRow);
+
+                    // Заполняем таблицу данными
+                    data.history.forEach((entry) => {
+                        console.log('Запись:', entry); // Выводим каждую запись в консоль
+                        const row = document.createElement("tr");
+                        row.appendChild(createCell(entry[0])); // Operation_id
+                        row.appendChild(createCell(entry[1])); // Transactor
+                        row.appendChild(createCell(entry[2])); // cash_from
+                        row.appendChild(createCell(entry[3])); // cash_to
+                        row.appendChild(createCell(entry[4])); // operation
+                        row.appendChild(createCell(entry[5])); // amount
+                        row.appendChild(createCell(entry[6])); // operation_description
+                        table.appendChild(row);
+                    });
+
+                    // Добавляем таблицу в контейнер
+                    historyContainer.appendChild(table);
+                }
+            } catch (error) {
+                alert(`Ошибка: ${error.message}`);
+            }
+        }
+
+        function createCell(value) {
+            const td = document.createElement("td");
+            td.textContent = value !== undefined && value !== null ? value : "N/A"; // Проверяем значение
+            return td;
+        }
+    </script>
+</head>
+<body>
+<h1>Получить историю</h1>
+<form onsubmit="event.preventDefault(); fetchHistory();">
+
+
+    <button type="submit">Получить</button>
+</form>
+
+<h2>История</h2>
+<div id="historyContainer"></div>
+</body>
+</html>

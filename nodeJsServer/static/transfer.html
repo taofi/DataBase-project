@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Перевод средств</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px 0;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        form {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        label {
+            margin-bottom: 5px;
+            display: block;
+            color: #555;
+        }
+
+        input[type="number"], input[type="text"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        input[type="submit"] {
+            background-color: #007BFF;
+            border: none;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px 0;
+            cursor: pointer;
+            border-radius: 5px;
+            width: 100%;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+    </style>
+    <script>
+        async function transferFunds() {
+            // Получаем значения из полей формы
+            const senderCashId = document.getElementById('senderCashId').value;
+            const receiverCashId = document.getElementById('receiverCashId').value;
+            const amount = document.getElementById('amount').value;
+
+            // Проверка на пустые значения
+            if (!senderCashId || !receiverCashId || !amount) {
+                alert('Пожалуйста, заполните все поля.');
+                return;
+            }
+
+            // Отправка POST-запроса на сервер
+            try {
+                const response = await fetch('/transfer', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        senderCashId: senderCashId,
+                        receiverCashId: receiverCashId,
+                        amount: amount
+                    })
+                });
+
+                // Проверка статуса ответа
+                if (response.ok) {
+                    const result = await response.json();
+                    alert(result.message);
+                } else {
+                    const error = await response.text();
+                    alert('Ошибка: ' + error);
+                }
+            } catch (error) {
+                alert('Ошибка при отправке запроса: ' + error.message);
+            }
+        }
+    </script>
+</head>
+<body>
+<h1>Перевод средств</h1>
+<button onclick="window.location.href='/'">Домой</button>
+<form onsubmit="event.preventDefault(); transferFunds();">
+    <label for="senderCashId">ID счета отправителя:</label>
+    <input type="number" id="senderCashId" required><br>
+
+    <label for="receiverCashId">ID счета получателя:</label>
+    <input type="number" id="receiverCashId" required><br>
+
+    <label for="amount">Сумма перевода:</label>
+    <input type="number" id="amount" required step="0.01"><br>
+
+    <button type="submit">Отправить перевод</button>
+</form>
+</body>
+</html>

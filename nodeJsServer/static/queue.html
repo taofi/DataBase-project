@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queue Operations</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        div {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        input[type="number"], input[type="text"] {
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+    </style>
+    <script>
+        async function executeQueueOperation() {
+            const operationId = document.getElementById("operationId").value;
+            try {
+                const response = await fetch('/executeQueue', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ operation_id: operationId })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    alert(`Ошибка: ${data.error || "Неизвестная ошибка"}`);
+                } else {
+                    alert(`Результат: ${data.message}`);
+                }
+            } catch (error) {
+                alert(`Ошибка: ${error.message}`);
+            }
+        }
+
+        async function fetchHistory() {
+            const filterId = document.getElementById("filterId").value;
+
+            try {
+                const body = {};
+
+                if (filterId) {
+                    body.filter_id = Number(filterId);
+                }
+
+                const response = await fetch('/getQueue', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    alert(`Ошибка: ${data.error || "Неизвестная ошибка"}`);
+                } else if (data.result) {
+                    alert(`Результат: ${data.result}`);
+                } else if (data.history) {
+                    console.log('Полученные данные:', data.history);
+
+                    const historyContainer = document.getElementById("historyContainer");
+                    historyContainer.innerHTML = "";
+
+                    const table = document.createElement("table");
+
+                    const headerRow = document.createElement("tr");
+                    const headers = ["Operation_id", "Transactor", "cash_from", "cash_to", "operation", "amount", "operation_description"];
+                    headers.forEach(header => {
+                        const th = document.createElement("th");
+                        th.textContent = header;
+                        headerRow.appendChild(th);
+                    });
+                    table.appendChild(headerRow);
+
+                    data.history.forEach((entry) => {
+                        const row = document.createElement("tr");
+                        row.appendChild(createCell(entry[0]));
+                        row.appendChild(createCell(entry[1]));
+                        row.appendChild(createCell(entry[2]));
+                        row.appendChild(createCell(entry[3]));
+                        row.appendChild(createCell(entry[4]));
+                        row.appendChild(createCell(entry[5]));
+                        row.appendChild(createCell(entry[6]));
+                        table.appendChild(row);
+                    });
+
+                    historyContainer.appendChild(table);
+                }
+            } catch (error) {
+                alert(`Ошибка: ${error.message}`);
+            }
+        }
+
+        function createCell(value) {
+            const td = document.createElement("td");
+            td.textContent = value !== undefined && value !== null ? value : "N/A";
+            return td;
+        }
+
+        async function updateQueue() {
+            const operationId = document.getElementById("operationIdUpd").value;
+            const newCashTo = document.getElementById("newCashTo").value;
+            const newAmount = document.getElementById("newAmount").value;
+
+            const body = {
+                operation_id: Number(operationId),
+                new_cash_to: newCashTo ? Number(newCashTo) : null,
+                new_amount: newAmount ? Number(newAmount) : null
+            };
+
+            try {
+                const response = await fetch('/updateQueue', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    alert(`Ошибка: ${data.error || "Неизвестная ошибка"}`);
+                } else {
+                    alert(`Результат: ${data.message}`);
+                }
+            } catch (error) {
+                alert(`Ошибка: ${error.message}`);
+            }
+        }
+
+        async function deleteQueueRow() {
+            const operationId = document.getElementById("operationIdDel").value;
+
+            try {
+                const response = await fetch('/deleteQueueRow', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ operation_id: Number(operationId) })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    alert(`Ошибка: ${data.error || "Неизвестная ошибка"}`);
+                } else {
+                    alert(`Результат: ${data.message}`);
+                }
+            } catch (error) {
+                alert(`Ошибка: ${error.message}`);
+            }
+        }
+    </script>
+</head>
+<body>
+<div>
+    <h1>Выполнение операции из очереди</h1>
+    <form onsubmit="event.preventDefault(); executeQueueOperation();">
+        <label for="operationId">ID операции:</label>
+        <input type="number" id="operationId" name="operationId" placeholder="Введите ID операции" required>
+        <br><br>
+        <button type="submit">Выполнить операцию</button>
+    </form>
+</div>
+<div>
+    <h1>Обновить Очередь</h1>
+    <form onsubmit="event.preventDefault(); updateQueue();">
+        <label for="operationId">ID Операции:</label>
+        <input type="number" id="operationIdUpd" required placeholder="Введите ID операции"><br><br>
+
+        <label for="newCashTo">Новый cash_to (может быть NULL):</label>
+        <input type="number" id="newCashTo" placeholder="Введите новый cash_to"><br><br>
+
+        <label for="newAmount">Новая сумма (может быть NULL):</label>
+        <input type="number" id="newAmount" placeholder="Введите новую сумму"><br><br>
+
+        <button type="submit">Обновить</button>
+    </form>
+</div>
+<div>
+    <h1>Удалить Операцию из Очереди</h1>
+    <form onsubmit="event.preventDefault(); deleteQueueRow();">
+        <label for="operationIdDel">ID Операции для удаления:</label>
+        <input type="number" id="operationIdDel" required placeholder="Введите ID операции"><br><br>
+        <button type="submit">Удалить</button>
+    </form>
+</div>
+<div>
+    <h1>Очередь</h1>
+    <form onsubmit="event.preventDefault(); fetchHistory();">
+        <div id="filterFieldContainer">
+            <label for="filterId">Фильтр по ID:</label>
+            <input type="number" id="filterId" name="filterId" placeholder="Введите ID"><br><br>
+        </div>
+        <button type="submit">Обновить</button>
+    </form>
+    <div id="historyContainer"></div>
+</div>
+</body>
+</html>
