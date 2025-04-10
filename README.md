@@ -35,4 +35,21 @@ port 1521
 service name pdb
 
 
+выполнить 1.config.sql
 
+4. 
+подключение к Pdb как pdbAdmin
+данные для подключения
+username pdbAdmin
+password oracle
+hostname localhost
+port 1521
+service name pdb
+
+выполнение остальных sql файлов в порядке выполнение
+
+5. запуск node.js сервера
+
+в каталоге nodeJsServer\scipts
+
+node headAdminServer.js
