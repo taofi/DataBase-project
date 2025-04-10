@@ -1,25 +1,13 @@
-CREATE USER pdbAdmin IDENTIFIED BY admin;
 
-GRANT EXECUTE ON DBMS_CRYPTO TO pdbAdmin; 
-CREATE USER Client_user IDENTIFIED BY password;
-CREATE USER Admin_user IDENTIFIED BY password;
-
-
-
-GRANT ALL PRIVILEGES TO pdbAdmin;
-CREATE TABLESPACE users_tablespace
-DATAFILE 'users_tablespace.dbf' SIZE 200M AUTOEXTEND ON NEXT 10M MAXSIZE UNLIMITED;
-
-ALTER USER pdbAdmin QUOTA UNLIMITED ON USERS_TABLESPACE;
-ALTER USER Client_user QUOTA UNLIMITED ON USERS_TABLESPACE;
-ALTER USER Admin_user QUOTA UNLIMITED ON USERS_TABLESPACE;
+CREATE ROLE user_pdb_role;
+GRANT CREATE SESSION TO user_pdb_role;
+CREATE ROLE admin_pdb_role;
 
 GRANT user_pdb_role TO Client_user;
 GRANT user_pdb_role TO Admin_user;
 GRANT admin_pdb_role TO Admin_user;
 
-CREATE ROLE user_pdb_role;
-GRANT CREATE SESSION TO user_pdb_role;
+
 GRANT EXECUTE ON pdbAdmin.Register_User TO user_pdb_role;
 GRANT EXECUTE ON pdbAdmin.Authorize_User TO user_pdb_role;
 GRANT EXECUTE ON pdbAdmin.UpdateUser TO user_pdb_role;
@@ -37,7 +25,6 @@ GRANT EXECUTE ON pdbAdmin.UpdateInfoCashAccount TO user_pdb_role;
 GRANT EXECUTE ON pdbAdmin.Block_Cash_Account TO user_pdb_role;
 
 
-CREATE ROLE admin_pdb_role;
 
 GRANT EXECUTE ON pdbAdmin.UPDATEACCOUNTBALANCE TO admin_pdb_role;
 GRANT EXECUTE ON pdbAdmin.UpdateQueueRow TO admin_pdb_role;

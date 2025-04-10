@@ -23,6 +23,40 @@ END;
 
 
 
+CREATE OR REPLACE FUNCTION GetCustomErrorMessage(p_error_message VARCHAR2)
+RETURN VARCHAR2 IS
+    v_start_pos NUMBER;
+    v_end_pos NUMBER;
+    v_custom_message VARCHAR2(4000);
+BEGIN
+    -- Ищем начало сообщения об ошибке ORA-20001
+    v_start_pos := INSTR(p_error_message, 'ORA-20001');
+    
+    IF v_start_pos > 0 THEN
+        -- Устанавливаем конец сообщения
+        v_end_pos := INSTR(p_error_message, CHR(10), v_start_pos); -- ищем символ новой строки
+        IF v_end_pos = 0 THEN
+            v_end_pos := LENGTH(p_error_message) + 1; -- если нет новой строки, то до конца
+        END IF;
+
+        -- Извлекаем только нужное сообщение
+        v_custom_message := SUBSTR(p_error_message, v_start_pos, v_end_pos - v_start_pos);
+        
+        -- Возвращаем результат с добавлением префикса "Ошибка: "
+        RETURN TRIM(v_custom_message);
+    ELSE
+        -- Если нужное сообщение не найдено, возвращаем исходное сообщение
+        RETURN p_error_message;
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- В случае ошибок внутри функции просто возвращаем исходное сообщение
+        RETURN p_error_message;
+END;
+/
+
+
+
 
 
 -- =====================               ROLE                   =========================
@@ -1497,40 +1531,6 @@ END;
 /
 
 
-CREATE OR REPLACE FUNCTION GetCustomErrorMessage(p_error_message VARCHAR2)
-RETURN VARCHAR2 IS
-    v_start_pos NUMBER;
-    v_end_pos NUMBER;
-    v_custom_message VARCHAR2(4000);
-BEGIN
-    -- Ищем начало сообщения об ошибке ORA-20001
-    v_start_pos := INSTR(p_error_message, 'ORA-20001');
-    
-    IF v_start_pos > 0 THEN
-        -- Устанавливаем конец сообщения
-        v_end_pos := INSTR(p_error_message, CHR(10), v_start_pos); -- ищем символ новой строки
-        IF v_end_pos = 0 THEN
-            v_end_pos := LENGTH(p_error_message) + 1; -- если нет новой строки, то до конца
-        END IF;
-
-        -- Извлекаем только нужное сообщение
-        v_custom_message := SUBSTR(p_error_message, v_start_pos, v_end_pos - v_start_pos);
-        
-        -- Возвращаем результат с добавлением префикса "Ошибка: "
-        RETURN TRIM(v_custom_message);
-    ELSE
-        -- Если нужное сообщение не найдено, возвращаем исходное сообщение
-        RETURN p_error_message;
-    END IF;
-EXCEPTION
-    WHEN OTHERS THEN
-        -- В случае ошибок внутри функции просто возвращаем исходное сообщение
-        RETURN p_error_message;
-END;
-/
-
-
-
 
 
 
@@ -1680,3 +1680,358 @@ EXCEPTION
 END Delete_Currency;
 /
 
+
+
+
+
+
+
+
+
+
+
+--==================== Get function ===============
+CREATE OR REPLACE FUNCTION GetUncryptHistory (
+    p_requester_id IN NUMBER,
+    p_target_user_id IN NUMBER,
+    result OUT VARCHAR2
+)
+RETURN SYS_REFCURSOR
+IS
+    v_role_level NUMBER;
+    o_history_cursor SYS_REFCURSOR;
+BEGIN
+    BEGIN
+        -- Проверка роли запрашивающего пользователя
+        SELECT r.role_level
+        INTO v_role_level
+        FROM UsersView u
+        JOIN Role r ON u.User_role = r.Role_id
+        WHERE u.User_id = p_requester_id;
+
+        -- Проверка условий доступа
+        IF p_target_user_id IS NULL THEN
+            IF v_role_level > 1 THEN
+                result := 'Доступ запрещен';
+                OPEN o_history_cursor FOR SELECT NULL AS Operation_id, NULL AS Transactor, 
+                                                 NULL AS cash_from, NULL AS cash_to, 
+                                                 NULL AS operation, NULL AS amount, 
+                                                 NULL AS operation_description
+                                          FROM DUAL
+                                          WHERE 1=0;
+                RETURN o_history_cursor;
+            END IF;
+        ELSE
+            IF p_requester_id != p_target_user_id AND v_role_level > 1 THEN
+                result := 'Доступ запрещен';
+                OPEN o_history_cursor FOR SELECT NULL AS Operation_id, NULL AS Transactor, 
+                                                 NULL AS cash_from, NULL AS cash_to, 
+                                                 NULL AS operation, NULL AS amount, 
+                                                 NULL AS operation_description
+                                          FROM DUAL
+                                          WHERE 1=0;
+                RETURN o_history_cursor;
+            END IF;
+        END IF;
+
+        -- Открытие курсора
+        IF p_target_user_id IS NOT NULL THEN
+            OPEN o_history_cursor FOR
+            SELECT *
+            FROM uncrypt_history
+            WHERE Transactor = p_target_user_id;
+        ELSE
+            OPEN o_history_cursor FOR
+            SELECT *
+            FROM uncrypt_history;
+        END IF;
+
+        -- Если успешное выполнение
+        result := null;
+        RETURN o_history_cursor;
+
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            result := 'Пользователь не найден';
+            OPEN o_history_cursor FOR SELECT NULL AS Operation_id, NULL AS Transactor, 
+                                             NULL AS cash_from, NULL AS cash_to, 
+                                             NULL AS operation, NULL AS amount, 
+                                             NULL AS operation_description
+                                      FROM DUAL
+                                      WHERE 1=0;
+            RETURN o_history_cursor;
+        WHEN OTHERS THEN
+            result := 'Error: ' || SQLERRM;
+            OPEN o_history_cursor FOR SELECT NULL AS Operation_id, NULL AS Transactor, 
+                                             NULL AS cash_from, NULL AS cash_to, 
+                                             NULL AS operation, NULL AS amount, 
+                                             NULL AS operation_description
+                                      FROM DUAL
+                                      WHERE 1=0;
+            RETURN o_history_cursor;
+    END;
+END;
+/
+
+
+
+CREATE OR REPLACE FUNCTION Get_User_Info (
+    p_requester_id IN NUMBER,  -- Идентификатор пользователя, запрашивающего информацию
+    p_target_user_id IN NUMBER, -- ID целевого пользователя
+    p_error_message OUT VARCHAR2 -- Параметр для сообщения об ошибке
+) RETURN SYS_REFCURSOR AS
+    v_cursor SYS_REFCURSOR;
+    v_role_level NUMBER;  
+BEGIN
+    -- Инициализация сообщения об ошибке
+    p_error_message := NULL;
+
+    -- Проверка параметров на NULL
+    IF p_requester_id IS NULL OR p_target_user_id IS NULL THEN
+        p_error_message := 'Ошибка: Параметры не могут быть NULL.';
+        OPEN v_cursor FOR SELECT NULL AS User_id, NULL AS login, NULL AS user_name, NULL AS last_name, NULL AS phone_number, NULL AS pasport FROM DUAL WHERE 1=0;
+        RETURN v_cursor;
+    END IF;
+
+    -- Получение уровня роли запрашивающего пользователя
+    BEGIN
+        SELECT r.role_level
+        INTO v_role_level
+        FROM UsersView u
+        JOIN Role r ON u.User_role = r.Role_id
+        WHERE u.User_id = p_requester_id;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            p_error_message := 'Ошибка: Пользователь с ID ' || p_requester_id || ' не найден.';
+            OPEN v_cursor FOR SELECT NULL AS User_id, NULL AS login, NULL AS user_name, NULL AS last_name, NULL AS phone_number, NULL AS pasport FROM DUAL WHERE 1=0;
+            RETURN v_cursor;
+    END;
+
+    -- Проверка прав доступа
+    IF v_role_level > 1 AND p_requester_id != p_target_user_id THEN
+        p_error_message := 'Ошибка: Недостаточно прав для доступа к данным пользователя.';
+        OPEN v_cursor FOR SELECT NULL AS User_id, NULL AS login, NULL AS user_name, NULL AS last_name, NULL AS phone_number, NULL AS pasport FROM DUAL WHERE 1=0;
+        RETURN v_cursor;
+    END IF;
+    IF v_role_level <= 1 THEN
+        BEGIN
+        OPEN v_cursor FOR
+        SELECT User_id, login, user_name, last_name, phone_number, pasport
+        FROM UsersView
+        WHERE User_id = p_target_user_id;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            p_error_message := 'Ошибка: Пользователь с ID ' || p_target_user_id || ' не найден.';
+            OPEN v_cursor FOR SELECT NULL AS User_id, NULL AS login, NULL AS user_name, NULL AS last_name, NULL AS phone_number, NULL AS pasport FROM DUAL WHERE 1=0;
+    END;
+
+    RETURN v_cursor;
+    END IF;
+    -- Открытие курсора с информацией о целевом пользователе
+    BEGIN
+        OPEN v_cursor FOR
+        SELECT User_id, login, user_name, last_name, 
+               SUBSTR(phone_number, 1, 3) || '*****' || SUBSTR(phone_number, -3) AS phone_number,
+               SUBSTR(pasport, 1, 2) || '*****' || SUBSTR(pasport, -2) as pasport
+        FROM UsersView
+        WHERE User_id = p_target_user_id;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            p_error_message := 'Ошибка: Пользователь с ID ' || p_target_user_id || ' не найден.';
+            OPEN v_cursor FOR SELECT NULL AS User_id, NULL AS login, NULL AS user_name, NULL AS last_name, NULL AS phone_number, NULL AS pasport FROM DUAL WHERE 1=0;
+    END;
+
+    RETURN v_cursor;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        p_error_message := 'Неизвестная ошибка: ' || SQLERRM;
+        OPEN v_cursor FOR SELECT NULL AS User_id, NULL AS login, NULL AS user_name, NULL AS last_name, NULL AS phone_number, NULL AS pasport FROM DUAL WHERE 1=0;
+        RETURN v_cursor;
+END;
+/
+
+
+
+
+CREATE OR REPLACE FUNCTION Get_Cash_Accounts (
+    p_requester_id IN NUMBER,           -- Идентификатор пользователя, запрашивающего информацию
+    p_target_user_id IN NUMBER,         -- Идентификатор пользователя, информацию о котором хотят получить
+    p_error_message OUT VARCHAR2         -- Параметр для записи сообщения об ошибке
+) RETURN SYS_REFCURSOR AS
+    v_cursor SYS_REFCURSOR;              -- Объявление курсора
+    v_role_level NUMBER;                  -- Переменная для хранения уровня роли запрашивающего пользователя
+BEGIN
+    -- Сброс сообщения об ошибке
+    p_error_message := NULL;
+
+    -- Проверка существования запрашивающего пользователя
+    SELECT r.role_level
+    INTO v_role_level
+    FROM Users u
+    JOIN Role r ON u.User_role = r.Role_id
+    WHERE u.User_id = p_requester_id;
+
+    -- Проверка уровня доступа
+    IF v_role_level > 1 AND p_requester_id != p_target_user_id THEN
+        OPEN v_cursor FOR SELECT * FROM DUAL WHERE 1 = 0;  -- Пустой результат
+        RETURN v_cursor;
+    END IF;
+
+    -- Основной запрос
+    OPEN v_cursor FOR
+        SELECT Cash_id, Balance, Cash_name, IsBlocked, Creation_date, Currency_id 
+        FROM uncrypt_cash_accounts
+        WHERE Cash_owner = p_target_user_id;
+
+    RETURN v_cursor; 
+
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        p_error_message := 'Пользователь не найден.';  -- Сообщение об ошибке, если пользователь не найден
+        OPEN v_cursor FOR SELECT * FROM DUAL WHERE 1 = 0; 
+        RETURN v_cursor;  
+    WHEN OTHERS THEN
+        p_error_message := SQLERRM;  -- Запись сообщения об ошибке
+        OPEN v_cursor FOR SELECT * FROM DUAL WHERE 1 = 0; 
+        RETURN v_cursor;  
+END;
+/
+
+
+
+CREATE OR REPLACE FUNCTION Get_Currencies
+RETURN SYS_REFCURSOR IS
+    currencies_cursor SYS_REFCURSOR;
+BEGIN
+    -- Открываем курсор с выборкой всех данных из таблицы Currencies
+    OPEN currencies_cursor FOR
+    SELECT Currency_id, Currency_name, Exchange_rate
+    FROM Currencies;
+
+    RETURN currencies_cursor;
+END Get_Currencies;
+/
+
+
+
+CREATE OR REPLACE FUNCTION GetUncryptQueue (
+    p_requester_id IN NUMBER,
+    p_target_user_id IN NUMBER,
+    result OUT VARCHAR2
+)
+RETURN SYS_REFCURSOR
+IS
+    v_role_level NUMBER;
+    o_history_cursor SYS_REFCURSOR;
+BEGIN
+    BEGIN
+        -- Проверка роли запрашивающего пользователя
+        SELECT r.role_level
+        INTO v_role_level
+        FROM UsersView u
+        JOIN Role r ON u.User_role = r.Role_id
+        WHERE u.User_id = p_requester_id;
+
+        -- Проверка условий доступа
+        IF v_role_level > 1 THEN
+                result := 'Доступ запрещен';
+                OPEN o_history_cursor FOR SELECT NULL AS Operation_id, NULL AS Transactor, 
+                                                 NULL AS cash_from, NULL AS cash_to, 
+                                                 NULL AS operation, NULL AS amount, 
+                                                 NULL AS operation_description
+                                          FROM DUAL
+                                          WHERE 1=0;
+                RETURN o_history_cursor;
+            END IF;
+
+        -- Открытие курсора
+        IF p_target_user_id IS NOT NULL THEN
+            OPEN o_history_cursor FOR
+            SELECT *
+            FROM uncrypt_queue
+            WHERE Transactor = p_target_user_id;
+        ELSE
+            OPEN o_history_cursor FOR
+            SELECT *
+            FROM uncrypt_queue;
+        END IF;
+
+        -- Если успешное выполнение
+        result := null;
+        RETURN o_history_cursor;
+
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            result := 'Пользователь не найден';
+            OPEN o_history_cursor FOR SELECT NULL AS Operation_id, NULL AS Transactor, 
+                                             NULL AS cash_from, NULL AS cash_to, 
+                                             NULL AS operation, NULL AS amount, 
+                                             NULL AS operation_description
+                                      FROM DUAL
+                                      WHERE 1=0;
+            RETURN o_history_cursor;
+        WHEN OTHERS THEN
+            result := 'Error: ' || SQLERRM;
+            OPEN o_history_cursor FOR SELECT NULL AS Operation_id, NULL AS Transactor, 
+                                             NULL AS cash_from, NULL AS cash_to, 
+                                             NULL AS operation, NULL AS amount, 
+                                             NULL AS operation_description
+                                      FROM DUAL
+                                      WHERE 1=0;
+            RETURN o_history_cursor;
+    END;
+END;
+/
+
+
+
+CREATE OR REPLACE  FUNCTION Get_Cash_Accounts_admin (
+    p_requester_id IN NUMBER,          -- Идентификатор пользователя, запрашивающего информацию
+    p_owner_id IN NUMBER DEFAULT NULL, -- Идентификатор владельца для дополнительной фильтрации
+    p_error_message OUT VARCHAR2       -- Параметр для записи сообщения об ошибке
+) RETURN SYS_REFCURSOR AS
+    v_cursor SYS_REFCURSOR;            -- Объявление курсора
+    v_role_level NUMBER;               -- Уровень роли запрашивающего пользователя
+BEGIN
+    -- Сброс сообщения об ошибке
+    p_error_message := NULL;
+
+    -- Проверка существования запрашивающего пользователя и уровня его роли
+    SELECT r.role_level
+    INTO v_role_level
+    FROM Users u
+    JOIN Role r ON u.User_role = r.Role_id
+    WHERE u.User_id = p_requester_id;
+
+    IF v_role_level > 1 THEN
+        p_error_message := 'Ошибка: недостаточно прав для выполнения запроса.';
+        OPEN v_cursor FOR SELECT * FROM DUAL WHERE 1 = 0;  -- Пустой результат
+        RETURN v_cursor;
+    END IF;
+
+    -- Основной запрос с учетом фильтрации по owner_id, если он указан
+    IF p_owner_id IS NOT NULL THEN
+        OPEN v_cursor FOR
+            SELECT Cash_id, Cash_owner, Balance, Cash_name, IsBlocked, Creation_date, Currency_id  
+            FROM uncrypt_cash_accounts
+            WHERE Cash_owner = p_owner_id;
+    ELSE
+        OPEN v_cursor FOR
+            SELECT Cash_id, Cash_owner, Balance, Cash_name, IsBlocked, Creation_date, Currency_id  
+            FROM uncrypt_cash_accounts;
+    END IF;
+
+    RETURN v_cursor;
+
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        p_error_message := 'Ошибка: указанный пользователь не найден.';
+        OPEN v_cursor FOR SELECT * FROM DUAL WHERE 1 = 0;  -- Пустой результат
+        RETURN v_cursor;
+    WHEN OTHERS THEN
+        p_error_message := 'Произошла ошибка: ' || SQLERRM;  -- Сообщение об ошибке
+        OPEN v_cursor FOR SELECT * FROM DUAL WHERE 1 = 0;  -- Пустой результат
+        RETURN v_cursor;
+END;
+/

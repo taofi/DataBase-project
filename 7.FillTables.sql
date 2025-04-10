@@ -10,6 +10,8 @@ select * from Currencies;
 
 
 commit;
+
+--============= далее тестирование =========
 BEGIN
     DBMS_OUTPUT.PUT_LINE(l_json_clob);
 

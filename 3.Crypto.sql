@@ -1,12 +1,10 @@
-
-
---drop table EncryptionKeys;
+drop table EncryptionKeys;
 CREATE TABLE EncryptionKeys (
     Key_id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     Key_value RAW(32) NOT NULL
 );
 
---INSERT INTO EncryptionKeys (Key_value) VALUES (UTL_RAW.CAST_TO_RAW('128lsabd1ujosd91'));
+INSERT INTO EncryptionKeys (Key_value) VALUES (UTL_RAW.CAST_TO_RAW('128lsabd1ujosd91'));
 
 -- Обновление ключа шифрования в таблице EncryptionKeys
 
@@ -262,3 +260,8 @@ SELECT
 FROM 
     Queue;
 /
+
+
+
+
+
